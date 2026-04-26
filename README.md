@@ -9,6 +9,8 @@
 [![Ollama](https://img.shields.io/badge/runtime-Ollama-black.svg)](https://ollama.com/)
 [![GPU: RTX 3090](https://img.shields.io/badge/GPU-RTX%203090%2024GB-green.svg)](https://www.nvidia.com/)
 
+> 📅 **Publié sur GitHub le 26/04/2026** (commit racine `de7e268`, 7 fichiers, 1286 lignes, License MIT, contenu FR caviardé). Procédure d'init repo public + garde-fous email no-reply documentés dans [`docs/publication-s64.md`](docs/publication-s64.md).
+
 ---
 
 ## TL;DR

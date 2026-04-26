@@ -274,9 +274,54 @@ Plutôt que continuer la phase 2 d'audit doc (~60 min), retester directement `qw
 - **Test Hermes 4 70B Q3** (modèle « MAISON » Nous Research, HuggingFace) en bonus comparatif qualité.
 - **Retest `enable_tool_search: true` post-update** : la dérive 27-32B Q5 observée était-elle uniquement due au bug `has_reasoning guard` ?
 
+## S64 — Publication du cookbook (26/04/2026)
+
+Une fois le verdict S63 stabilisé, le contenu a été publié comme repo public GitHub pour partage avec la communauté `r/LocalLLaMA` et les utilisateurs RTX 3090 + Hermes Agent.
+
+### Ce qui a été publié
+
+- Repo GitHub `mightIA/hermes-agent-rtx3090-cookbook` (public, License MIT)
+- Commit racine `de7e268` — 7 fichiers, 1286 lignes
+  - `README.md` (116 lignes)
+  - `LICENSE` (21 lignes)
+  - `.gitignore` (25 lignes)
+  - `docs/audit-methodologique.md` (147 lignes)
+  - `docs/troubleshooting.md` (379 lignes)
+  - `docs/configs.md` (316 lignes)
+  - `docs/journey-s57-s63.md` (282 lignes — ce document, version pré-S64)
+- Contenu **français pour le moment** ; traduction anglaise reportée après une vérification technique sérieuse
+
+### Caviardage
+
+Triple `grep` multi-pattern sur 15 termes sensibles + emails arbitraires + IPs arbitraires : **zéro fuite confirmée**. Patterns vérifiés : domaines internes, IPs LAN privées, secret_path MCP, emails personnels, prénom/lieu, hostname machine, paths WSL2 nominatifs, blob hashes Ollama, session IDs interne.
+
+### Garde-fous GitHub appliqués
+
+| Garde-fou | Détail | Raison |
+|---|---|---|
+| `git config user.email` | Adresse no-reply GitHub `<id>+<user>@users.noreply.github.com` (pas l'email Gmail réel) | Évite la fuite de l'email perso dans le `git log` public |
+| Toggle GitHub *« Keep my email addresses private »* | ON | Couche serveur de protection email |
+| Toggle GitHub *« Block command line pushes that expose my email »* | ON | Filet final côté serveur — push refusé si l'email réel se glisse dans un commit |
+| `.gitignore` `**/secret_*` | Pattern générique au lieu de `**/<domaine>*` | Le pattern `<domaine>*` aurait paradoxalement publié le domaine sensible dans `.gitignore` lui-même |
+
+### Procédure init repo public — points clés
+
+Voir [`publication-s64.md`](publication-s64.md) pour le pas-à-pas complet. Synthèse :
+
+1. **Web UI `github.com/new` VIDE** — ne PAS cocher *Add README / Add .gitignore / Add License* lors de la création du repo distant, sinon l'historique du remote diverge dès le premier push (commit auto-généré sur `main` qu'il faut ensuite réconcilier).
+2. **Séquence locale** : `git init` → `git add` → sanity `git status` → `git commit` → `git remote add origin` → `git push -u origin main`.
+3. **Authentification** : popup Git Credential Manager → OAuth Browser → autorisation `git-ecosystem` dans Brave → push reprend automatiquement. Token stocké dans Windows Credential Manager pour les pushes suivants (silencieux).
+
+### Pièges rencontrés à la publication
+
+- **`.gitignore` `**/<domaine>*`** publiait paradoxalement le domaine sensible dans `.gitignore` lui-même → patché vers `**/secret_*` générique avant le premier push.
+- **`git config` global vide** par défaut sous Windows malgré une déclaration *« déjà configuré »* → vérification obligatoire `git config --global --get user.email` avant le premier `git commit`.
+- **`git push -u origin main` retourne `Everything up-to-date`** après auth GCM, alors que le push s'était bien produit pendant la popup. Le push est silencieux côté terminal pendant la fenêtre OAuth.
+
 ## Pour aller plus loin
 
 - [`audit-methodologique.md`](audit-methodologique.md) — pattern réutilisable
 - [`troubleshooting.md`](troubleshooting.md) — symptômes / fixes
 - [`configs.md`](configs.md) — configs reproductibles
+- [`publication-s64.md`](publication-s64.md) — procédure init repo public détaillée
 - [README](../README.md) — vue d'ensemble du cookbook
