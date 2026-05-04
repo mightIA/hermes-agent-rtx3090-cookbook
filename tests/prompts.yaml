@@ -1,0 +1,179 @@
+# =============================================================================
+# Registry des prompts canoniques pour évaluation modèles Hermès Agent
+# =============================================================================
+# CRITIQUE : ces prompts sont FIGÉS. Ne JAMAIS dévier de la formulation
+# exacte sinon les comparaisons inter-modèles deviennent invalides.
+#
+# Pour ajouter un test : nouvelle clé (Test_X), incrémenter l'ID, documenter
+# tool_calls_expected et baseline_qwen35_agent. Une fois publié, ne plus
+# modifier le prompt — créer un Test_X_v2 si évolution nécessaire.
+#
+# Source baselines : Cookbook Hermès journey-s57-s63.md (Test A/B/C, S63)
+# Niveaux D/E/F/G/H : ajoutés S98 (04/05/2026), à figer après 1ère exécution
+# =============================================================================
+
+version: 1
+last_update: "2026-05-04"
+maintainer: Jarvis (sessions S98+)
+
+# -----------------------------------------------------------------------------
+# Étage 1 — Quick check (rapidité + cohérence)
+# -----------------------------------------------------------------------------
+
+Test_B:
+  status: figé
+  level: étage1
+  description: Lecture multi-sensors + comparaison sémantique
+  prompt: |
+    Recherche dans Home Assistant l'entité qui correspond à la température
+    ambiante de ma cuisine.
+  tool_calls_expected: 1  # ha_search_entities
+  expected_output:
+    must_cite_entity: sensor.capteur_temp_cuisine_temperature
+    must_cite_value_around: "22°C"
+    format: court, identification claire
+  baseline_qwen35_agent_seconds: 160  # 2m40s S63
+  baseline_session: S63
+
+# -----------------------------------------------------------------------------
+# Étage 2 — Complexité (raisonnement + écriture)
+# -----------------------------------------------------------------------------
+
+Test_A:
+  status: figé
+  level: étage2
+  description: Action simple write (notification persistante)
+  prompt: |
+    Crée une notification persistante dans Home Assistant avec le titre
+    "Test ${MODEL_NAME}" et le message "Si tu vois ça, le tool calling HA
+    fonctionne avec ${MODEL_NAME}."
+  prompt_variables:
+    MODEL_NAME: "à substituer par le nom du modèle testé"
+  tool_calls_expected: 1  # ha_call_service persistent_notification.create
+  expected_output:
+    notif_visible_in_ha: true
+    must_not_be_empty: true  # piège qwen3:32b S57 "empty after tool calls"
+  baseline_qwen35_agent_seconds: 306  # 5m06s S63
+  baseline_session: S63
+
+Test_C:
+  status: figé
+  level: étage2
+  description: Multi-step conditionnel (read + write conditionnel)
+  prompt: |
+    Lis la température ambiante de la cuisine. Si elle est strictement
+    supérieure à 22°C, crée une notification persistante dans Home
+    Assistant avec le titre "Cuisine chaude" et le message "La cuisine
+    est à X°C, c'est au-dessus du seuil de 22°C." (remplace X par la
+    valeur lue). Si elle est inférieure ou égale, dis-moi simplement la
+    valeur sans créer de notif.
+  tool_calls_expected: 2  # ha_get_state read + ha_call_service write
+  expected_output:
+    must_cite_exact_value: true
+    must_verbalize_condition: true  # ex "22.12 > 22, donc je crée la notif"
+    must_act_conditionally: true
+  baseline_qwen35_agent_seconds: 177  # 2m57s S63
+  baseline_session: S63
+
+# -----------------------------------------------------------------------------
+# Étage 3 — Stress workflows (à figer après 1ère exécution)
+# -----------------------------------------------------------------------------
+
+Test_D:
+  status: à_figer
+  level: étage3
+  description: Multi-reads + agrégation + write structuré
+  prompt: |
+    Lis les températures de toutes les pièces (cuisine, salon, chambres,
+    extérieur si dispo). Calcule la moyenne, identifie la pièce la plus
+    chaude et la pièce la plus froide avec leurs valeurs exactes. Puis
+    crée une notification persistante "Bilan thermique maison" avec un
+    résumé en 3 lignes max.
+  tool_calls_expected: ">=5"  # 4-6 reads + 1 write
+  expected_output:
+    must_cite_min_max: true
+    must_compute_average: true
+    notif_format_3_lines: true
+  baseline_qwen35_agent_seconds: null  # pas de baseline encore, à mesurer
+  proposed_session: S98
+
+Test_E:
+  status: à_figer
+  level: étage3
+  description: Exploration + filtrage + génération YAML automation
+  prompt: |
+    Liste-moi toutes les automatisations Home Assistant qui contiennent
+    une condition sur la température. Pour chacune, dis-moi si elle est
+    active ou désactivée. Si une est désactivée, propose-moi un bloc
+    YAML pour la réactiver.
+  tool_calls_expected: ">=2"  # ha_search_entities ou ha_config_get_automation × N
+  expected_output:
+    must_filter_on_temperature_condition: true
+    yaml_syntactically_valid: true
+  baseline_qwen35_agent_seconds: null
+  proposed_session: S98
+
+Test_F:
+  status: à_figer
+  level: étage3
+  description: Diagnostic chaudière Frisquet + conditional write
+  prompt: |
+    Vérifie l'état de la chaudière Frisquet et de tous les sensors
+    associés (température eau, mode, erreurs si sensors dédiés). Génère
+    un diagnostic en 4 sections : État courant / Anomalies détectées /
+    Recommandations / Action suggérée. Si tu détectes une anomalie,
+    crée une notification persistante "Alerte Frisquet" avec le détail.
+  tool_calls_expected: ">=3"
+  expected_output:
+    must_have_4_sections: true
+    conditional_write_only_if_anomaly: true
+  baseline_qwen35_agent_seconds: null
+  proposed_session: S98
+
+Test_G:
+  status: planifié
+  level: étage3
+  description: Tri email — workflow quotidien (use case agent personnel)
+  prompt: |
+    Lis les emails non lus de la boîte ${GMAIL_ACCOUNT} des 7
+    derniers jours. Pour chacun, classe-le selon les règles habituelles
+    (whitelist / blacklist / IA suppression / à conserver). Pour ceux
+    classés "IA suppression", déplace-les vers la corbeille. Pour les
+    autres, applique le label correspondant. Génère un résumé en fin
+    de tri : nombre traités, par catégorie, mails douteux à revoir.
+  prompt_variables:
+    GMAIL_ACCOUNT: "à substituer par l'adresse email Gmail à tester (ex: your-account@gmail.com)"
+  tool_calls_expected: ">=10"  # variable selon volume boîte
+  expected_output:
+    classification_match_rules: true
+    summary_at_end: true
+  baseline_qwen35_agent_seconds: null
+  required_setup:
+    - "Brancher gmail-mcp-local à ~/.hermes/config.yaml mcp_servers:"
+    - "Charger les fichiers patterns whitelist/blacklist/learning_log (cf. cookbook tri-email-gmail)"
+  proposed_session: future
+  blocker: gmail-mcp pas encore branché à Hermès
+
+Test_H:
+  status: planifié
+  level: étage3
+  description: Rapport journalier complet (équivalent Mode Réactif 23h30)
+  prompt: |
+    Génère le rapport journalier de l'état de la maison. Sections :
+    1. Climat (températures par pièce + moyennes + min/max).
+    2. Chauffage (état chaudière Frisquet + consommation jour).
+    3. Sécurité (état caméras Dahua + détecteurs ouverture/fermeture).
+    4. Éclairage (lampes ON/OFF + consommation totale).
+    5. Anomalies détectées (si applicable).
+    Sauvegarde le rapport au format Markdown dans
+    /home/might/Documents/jarvis_rapports/AAAA-MM-JJ_rapport.md.
+  tool_calls_expected: ">=10"
+  expected_output:
+    file_created: true
+    sections_5: true
+    markdown_valid: true
+  baseline_qwen35_agent_seconds: null
+  required_setup:
+    - "MCP file system ou outil write_file dans Hermès"
+  proposed_session: future
+  blocker: MCP file system pas connecté
